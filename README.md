@@ -1,5 +1,7 @@
 # Symulator Mrówek - Rozszerzona Wersja
 
+Kod oraz dokumentacja w pełni napisana przy użyciu AI.
+
 Zaawansowany symulator mrówek napisany w Pythonie z użyciem PyGame, który demonstruje realistyczne zachowanie mrówek w poszukiwaniu jedzenia, komunikacji za pomocą feromonów oraz nawigacji w środowisku z przeszkodami.
 
 ## 🆕 Nowe Funkcjonalności
