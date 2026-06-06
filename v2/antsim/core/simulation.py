@@ -1,0 +1,64 @@
+"""Symulacja — orkiestracja kroku modelu.
+
+Buduje świat z konfiguracji (fabryka) i wykonuje kolejne kroki czasu. Jest
+całkowicie niezależna od pygame, więc daje się testować jednostkowo.
+"""
+
+from __future__ import annotations
+
+import math
+import random
+
+from antsim.behavior.states import SearchingState
+from antsim.core.vector import Vec2
+from antsim.core.world import World
+from antsim.entities.ant import Ant
+from antsim.entities.food import Food
+from antsim.stats.collector import StatsCollector
+from config.settings import SimulationConfig
+
+
+class Simulation:
+    def __init__(self, config: SimulationConfig, seed: int | None = None) -> None:
+        if seed is not None:
+            random.seed(seed)
+        self.config = config
+        self.world = World(config)
+        self.stats = StatsCollector(self.world.events)
+        self._populate()
+
+    # --- Budowa stanu początkowego (fabryka) ---
+
+    def _populate(self) -> None:
+        self._spawn_ants(self.config.ant_count)
+        for _ in range(self.config.food_source_count):
+            self._spawn_food()
+
+    def _spawn_ants(self, count: int) -> None:
+        nest = self.world.nest
+        for _ in range(count):
+            offset = Vec2.from_angle(
+                random.uniform(0.0, 2.0 * math.pi),
+                random.uniform(0.0, nest.radius),
+            )
+            self.world.ants.append(Ant(nest.position + offset, SearchingState()))
+
+    def _spawn_food(self) -> None:
+        cfg = self.config
+        nest = self.world.nest
+        for _ in range(50):
+            position = Vec2(
+                random.uniform(cfg.food_radius, cfg.width - cfg.food_radius),
+                random.uniform(cfg.food_radius, cfg.height - cfg.food_radius),
+            )
+            if position.distance_to(nest.position) >= cfg.food_min_distance_from_nest:
+                self.world.foods.append(Food(position, cfg.food_amount, cfg.food_radius))
+                return
+
+    # --- Krok symulacji ---
+
+    def step(self, dt: float) -> None:
+        for ant in self.world.ants:
+            ant.update(self.world, dt)
+        self.world.pheromones.update(dt)
+        self.stats.tick(dt)
