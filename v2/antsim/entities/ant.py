@@ -45,9 +45,22 @@ class Ant:
         diff = max(-max_step, min(max_step, diff))
         self.heading = Vec2.from_angle(current_angle + diff)
 
-        new_position = self.position + self.heading * (cfg.ant_speed * dt)
+        step = self.heading * (cfg.ant_speed * dt)
+        target = self.position + step
         clamped = Vec2(
-            max(0.0, min(cfg.width, new_position.x)),
-            max(0.0, min(cfg.height, new_position.y)),
+            max(0.0, min(cfg.width, target.x)),
+            max(0.0, min(cfg.height, target.y)),
         )
-        self.position = clamped
+        self.position = self._resolve_obstacles(clamped, step, world)
+
+    def _resolve_obstacles(self, target: Vec2, step: Vec2, world: "World") -> Vec2:
+        """Nie pozwala wejść w przeszkodę; próbuje ślizgu po jednej osi."""
+        if not world.point_in_obstacle(target):
+            return target
+        slide_x = Vec2(self.position.x + step.x, self.position.y)
+        if not world.point_in_obstacle(slide_x):
+            return slide_x
+        slide_y = Vec2(self.position.x, self.position.y + step.y)
+        if not world.point_in_obstacle(slide_y):
+            return slide_y
+        return self.position  # całkiem zablokowana — zostaje, kurs i tak się zmienia

@@ -16,11 +16,16 @@ python main.py
 
 Sterowanie:
 
-| Klawisz | Działanie |
-|---------|-----------|
-| `ESC`   | Wyjście |
-| `P`     | Pokaż / ukryj feromony |
-| `H`     | Pokaż / ukryj wskaźnik kierunku mrówek |
+| Klawisz / mysz | Działanie |
+|----------------|-----------|
+| `ESC`          | Wyjście |
+| `P`            | Pokaż / ukryj feromony |
+| `H`            | Pokaż / ukryj wskaźnik kierunku mrówek |
+| `SPACJA`       | Dodaj mrówki |
+| `R`            | Usuń wszystkie przeszkody |
+| `C`            | Wyczyść feromony |
+| **LPM**        | Postaw źródło jedzenia |
+| **PPM**        | Postaw przeszkodę (przytrzymaj, by malować ścianę) |
 
 ## Jak działają mrówki
 
@@ -134,7 +139,7 @@ stąd domyślna wartość `1.0`.
 - [x] Etap 1 — fundament ruchu (bezwładność, płynne błądzenie)
 - [x] Etap 2 — jedzenie i powrót (maszyna stanów)
 - [x] Etap 3 — siatka feromonów (ACO: dwa ślady, parowanie, dyfuzja, czujniki)
-- [ ] Etap 4 — przeszkody i interaktywna mapa (mysz)
+- [x] Etap 4 — przeszkody i interaktywna mapa (mysz)
 - [ ] Etap 5 — panel sterowania na żywo (suwaki, przełączniki)
 - [ ] Etap 6 — statystyki i wykresy w czasie
 - [ ] Etap 7 — życie kolonii (głód, narodziny, drapieżniki)

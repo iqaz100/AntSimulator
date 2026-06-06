@@ -16,8 +16,11 @@ _ANT_SEARCHING = (235, 90, 70)
 _ANT_CARRYING = (245, 200, 70)
 _NEST_COLOR = (150, 110, 70)
 _FOOD_COLOR = (120, 220, 120)
+_OBSTACLE_COLOR = (90, 90, 100)
+_OBSTACLE_BORDER = (40, 40, 48)
 _HEADING_COLOR = (20, 20, 25)
 _TEXT_COLOR = (230, 230, 235)
+_HINT_COLOR = (150, 150, 160)
 
 
 class Renderer:
@@ -30,6 +33,7 @@ class Renderer:
         self.surface.fill(self.config.background_color)
         if self.config.show_pheromones:
             self._draw_pheromones(world)
+        self._draw_obstacles(world)
         self._draw_food(world)
         self._draw_nest(world)
         self._draw_ants(world)
@@ -48,6 +52,14 @@ class Renderer:
             layer, (grid.cols * grid.cell_size, grid.rows * grid.cell_size)
         )
         self.surface.blit(scaled, (0, 0))
+
+    def _draw_obstacles(self, world: World) -> None:
+        for obstacle in world.obstacles:
+            rect = pygame.Rect(
+                int(obstacle.x), int(obstacle.y), int(obstacle.width), int(obstacle.height)
+            )
+            pygame.draw.rect(self.surface, _OBSTACLE_COLOR, rect)
+            pygame.draw.rect(self.surface, _OBSTACLE_BORDER, rect, 2)
 
     def _draw_food(self, world: World) -> None:
         for food in world.foods:
@@ -76,7 +88,9 @@ class Renderer:
     def _draw_hud(self, world: World, fps: float) -> None:
         text = (
             f"Mrowki: {len(world.ants)}  |  Jedzenie w gniezdzie: {world.nest.food_stored}"
-            f"  |  FPS: {fps:4.0f}"
+            f"  |  Przeszkody: {len(world.obstacles)}  |  FPS: {fps:4.0f}"
         )
-        surface = self.font.render(text, True, _TEXT_COLOR)
-        self.surface.blit(surface, (10, 10))
+        self.surface.blit(self.font.render(text, True, _TEXT_COLOR), (10, 10))
+
+        hint = "LPM: jedzenie  PPM: przeszkoda  SPACJA: +mrowki  R: usun przeszkody  C: czysc feromony  P/H: widok"
+        self.surface.blit(self.font.render(hint, True, _HINT_COLOR), (10, self.config.height - 26))

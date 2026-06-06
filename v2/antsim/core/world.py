@@ -33,6 +33,10 @@ class World:
             max_value=config.deposit_max,
         )
 
+    def point_in_obstacle(self, point: Vec2) -> bool:
+        """Czy punkt leży wewnątrz którejkolwiek przeszkody."""
+        return any(obstacle.contains(point) for obstacle in self.obstacles)
+
     def nearest_food(self, position: Vec2, radius: float) -> Food | None:
         """Najbliższe niepuste źródło jedzenia w zasięgu ``radius`` (lub None)."""
         best: Food | None = None

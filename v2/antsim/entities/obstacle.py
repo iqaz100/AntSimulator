@@ -22,8 +22,12 @@ class Obstacle:
             and self.y <= point.y <= self.y + self.height
         )
 
-    def distance_to(self, point: Vec2) -> float:
-        """Odległość punktu od najbliższej krawędzi prostokąta (0 w środku)."""
+    def closest_point(self, point: Vec2) -> Vec2:
+        """Najbliższy punkt prostokąta względem ``point`` (sam punkt, gdy w środku)."""
         closest_x = max(self.x, min(point.x, self.x + self.width))
         closest_y = max(self.y, min(point.y, self.y + self.height))
-        return Vec2(closest_x, closest_y).distance_to(point)
+        return Vec2(closest_x, closest_y)
+
+    def distance_to(self, point: Vec2) -> float:
+        """Odległość punktu od najbliższej krawędzi prostokąta (0 w środku)."""
+        return self.closest_point(point).distance_to(point)

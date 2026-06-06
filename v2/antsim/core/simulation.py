@@ -14,6 +14,7 @@ from antsim.core.vector import Vec2
 from antsim.core.world import World
 from antsim.entities.ant import Ant
 from antsim.entities.food import Food
+from antsim.entities.obstacle import Obstacle
 from antsim.stats.collector import StatsCollector
 from config.settings import SimulationConfig
 
@@ -54,6 +55,37 @@ class Simulation:
             if position.distance_to(nest.position) >= cfg.food_min_distance_from_nest:
                 self.world.foods.append(Food(position, cfg.food_amount, cfg.food_radius))
                 return
+
+    # --- Interakcja użytkownika (sterowanie) ---
+
+    def add_ants(self, count: int) -> None:
+        self._spawn_ants(count)
+
+    def add_food_at(self, position: Vec2) -> None:
+        cfg = self.config
+        self.world.foods.append(Food(position, cfg.food_amount, cfg.food_radius))
+
+    def add_obstacle_at(self, position: Vec2) -> None:
+        """Stawia kwadratową przeszkodę wyśrodkowaną na punkcie.
+
+        Pomija miejsce na gnieździe oraz punkty już pokryte przeszkodą — dzięki
+        temu trzymanie PPM maluje ścianę bez nakładania duplikatów co klatkę.
+        """
+        cfg = self.config
+        size = cfg.obstacle_place_size
+        if position.distance_to(self.world.nest.position) < self.world.nest.radius + size:
+            return
+        if self.world.point_in_obstacle(position):
+            return
+        self.world.obstacles.append(
+            Obstacle(position.x - size / 2.0, position.y - size / 2.0, size, size)
+        )
+
+    def clear_obstacles(self) -> None:
+        self.world.obstacles.clear()
+
+    def clear_pheromones(self) -> None:
+        self.world.pheromones.clear()
 
     # --- Krok symulacji ---
 

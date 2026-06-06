@@ -87,6 +87,12 @@ class AntState:
         edge = steering.avoid_edges(ant.position, cfg.width, cfg.height, cfg.perception_radius)
         desired = desired + edge * cfg.avoid_weight
 
+        if world.obstacles:
+            obstacle_push = steering.avoid_obstacles(
+                ant.position, world.obstacles, cfg.obstacle_avoid_lookahead
+            )
+            desired = desired + obstacle_push * cfg.avoid_weight
+
         result = desired.normalized()
         return result if result.length_sq() > 0.0 else ant.heading
 

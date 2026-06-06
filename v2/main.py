@@ -19,10 +19,12 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import pygame
 
 from antsim.core.simulation import Simulation
+from antsim.core.vector import Vec2
 from antsim.rendering.renderer import Renderer
 from config.settings import SimulationConfig
 
 _MAX_DT = 0.05  # zabezpieczenie przed skokiem czasu po zacięciu (s)
+_ANTS_PER_KEYPRESS = 20
 
 
 def run() -> None:
@@ -39,7 +41,8 @@ def run() -> None:
     running = True
     while running:
         dt = min(clock.tick(config.fps) / 1000.0, _MAX_DT)
-        running = _handle_events(config)
+        running = _handle_events(simulation, config)
+        _handle_mouse_paint(simulation)
         simulation.step(dt)
         renderer.draw(simulation.world, clock.get_fps())
         pygame.display.flip()
@@ -47,7 +50,7 @@ def run() -> None:
     pygame.quit()
 
 
-def _handle_events(config: SimulationConfig) -> bool:
+def _handle_events(simulation: Simulation, config: SimulationConfig) -> bool:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             return False
@@ -58,7 +61,26 @@ def _handle_events(config: SimulationConfig) -> bool:
                 config.show_pheromones = not config.show_pheromones
             elif event.key == pygame.K_h:
                 config.show_heading = not config.show_heading
+            elif event.key == pygame.K_SPACE:
+                simulation.add_ants(_ANTS_PER_KEYPRESS)
+            elif event.key == pygame.K_r:
+                simulation.clear_obstacles()
+            elif event.key == pygame.K_c:
+                simulation.clear_pheromones()
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            position = Vec2(*event.pos)
+            if event.button == 1:        # LPM — postaw jedzenie
+                simulation.add_food_at(position)
+            elif event.button == 3:      # PPM — postaw przeszkodę
+                simulation.add_obstacle_at(position)
     return True
+
+
+def _handle_mouse_paint(simulation: Simulation) -> None:
+    """Trzymanie PPM maluje ciąg przeszkód (wygodne rysowanie ścian)."""
+    buttons = pygame.mouse.get_pressed()
+    if buttons[2]:
+        simulation.add_obstacle_at(Vec2(*pygame.mouse.get_pos()))
 
 
 if __name__ == "__main__":

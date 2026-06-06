@@ -60,6 +60,10 @@ class SimulationConfig:
     deposit_max: float = 255.0       # górne ograniczenie (mapuje się na kolor)
     deposit_decay_time: float = 28.0 # po tylu s od "celu" depozyt spada do zera
 
+    # --- Przeszkody ---
+    obstacle_avoid_lookahead: float = 28.0  # zasięg wykrywania przeszkody [px]
+    obstacle_place_size: float = 56.0       # bok przeszkody stawianej myszką [px]
+
     # --- Jedzenie ---
     food_source_count: int = 3
     food_amount: int = 1200
