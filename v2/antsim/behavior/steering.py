@@ -52,6 +52,32 @@ def follow_pheromone(
     return right_dir, right
 
 
+def strongest_trail_direction(
+    grid: PheromoneGrid,
+    layer: int,
+    position: Vec2,
+    distance: float,
+    samples: int = 12,
+) -> tuple[Vec2 | None, float]:
+    """Szuka najsilniejszego śladu wokół mrówki (próbkowanie dookolne).
+
+    Używane przy wejściu w nowy stan, by mrówka od razu zorientowała się wzdłuż
+    istniejącego, wspólnego szlaku zamiast ruszać w przypadkowym kierunku.
+    Zwraca (kierunek do najsilniejszego śladu, jego siła) lub (None, 0.0).
+    """
+    best_direction: Vec2 | None = None
+    best_value = 0.0
+    for i in range(samples):
+        angle = (2.0 * math.pi / samples) * i
+        direction = Vec2.from_angle(angle)
+        point = position + direction * distance
+        value = _sample_at(grid, layer, point)
+        if value > best_value:
+            best_value = value
+            best_direction = direction
+    return best_direction, best_value
+
+
 def avoid_edges(position: Vec2, width: float, height: float, margin: float) -> Vec2:
     """Wektor odpychający od krawędzi planszy (zero z dala od brzegów)."""
     push = Vec2(0.0, 0.0)

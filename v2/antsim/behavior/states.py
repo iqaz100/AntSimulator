@@ -10,6 +10,7 @@ bazowej, więc poszczególne stany są krótkie i czytelne.
 
 from __future__ import annotations
 
+import random
 from typing import TYPE_CHECKING
 
 from antsim.behavior import steering
@@ -32,6 +33,22 @@ class AntState:
 
     def update(self, ant: "Ant", world: "World", dt: float) -> None:
         raise NotImplementedError
+
+    def _orient_along_trail(self, ant: "Ant", world: "World", fallback: Vec2) -> None:
+        """Ustawia kurs wzdłuż najsilniejszego śladu (warstwa ``sense_layer``).
+
+        Gdy w pobliżu nie ma śladu, używa kierunku zapasowego (``fallback``).
+        Dzięki temu mrówka wychodząca z gniazda / ruszająca w powrót od razu
+        wchodzi na istniejący wspólny szlak, zamiast błądzić.
+        """
+        cfg = world.config
+        direction, strength = steering.strongest_trail_direction(
+            world.pheromones, self.sense_layer, ant.position, cfg.sensor_distance
+        )
+        if direction is not None and strength > cfg.pheromone_sense_threshold:
+            ant.heading = direction
+        elif fallback.length_sq() > 0.0:
+            ant.heading = fallback
 
     # --- Wspólne narzędzia dla podklas ---
 
@@ -80,9 +97,13 @@ class SearchingState(AntState):
 
     def on_enter(self, ant: "Ant", world: "World") -> None:
         super().on_enter(ant, world)
-        # Wyjdź z gniazda — odwróć się od niego, by nie krążyć przy wejściu.
+        # Część mrówek wychodzi wzdłuż istniejącego szlaku FOOD (widoczne "używanie"
+        # szlaku w obie strony), reszta rusza promieniście — to zachowuje
+        # eksplorację i wydajność kolonii (patrz trail_rejoin_chance).
         away = (ant.position - world.nest.position).normalized()
-        if away.length_sq() > 0.0:
+        if random.random() < world.config.trail_rejoin_chance:
+            self._orient_along_trail(ant, world, fallback=away)
+        elif away.length_sq() > 0.0:
             ant.heading = away
 
     def update(self, ant: "Ant", world: "World", dt: float) -> None:
@@ -108,6 +129,10 @@ class ReturningState(AntState):
 
     def on_enter(self, ant: "Ant", world: "World") -> None:
         super().on_enter(ant, world)
+        # Po podniesieniu jedzenia celuj wprost w gniazdo — to pewny, kierunkowy
+        # start. Ślad HOME przy źródle jedzenia bywa rozmyty (mrówki schodziły się
+        # z wielu stron), więc orientacja "na najsilniejszy HOME" myliłaby kurs;
+        # właściwy szlak mrówka i tak złapie czujnikami w trakcie powrotu.
         toward = (world.nest.position - ant.position).normalized()
         if toward.length_sq() > 0.0:
             ant.heading = toward

@@ -38,6 +38,31 @@ def test_follow_pheromone_turns_toward_stronger_side():
     assert math.isclose(direction.angle(), left_dir.angle(), abs_tol=1e-6)
 
 
+def test_strongest_trail_direction_points_to_trail():
+    cfg = SimulationConfig()
+    grid = PheromoneGrid(400, 400, 4, evaporation=0.0, diffusion=0.0, max_value=255.0)
+    position = Vec2(200, 200)
+    # Ślad dokładnie nad mrówką (kierunek +y w układzie ekranu).
+    grid.deposit(PheromoneGrid.HOME, 200, 200 + cfg.sensor_distance, 200.0)
+
+    direction, strength = steering.strongest_trail_direction(
+        grid, PheromoneGrid.HOME, position, cfg.sensor_distance
+    )
+    assert strength > 0
+    assert direction is not None
+    assert math.isclose(direction.angle(), math.pi / 2, abs_tol=0.3)
+
+
+def test_strongest_trail_direction_empty_grid_returns_none():
+    cfg = SimulationConfig()
+    grid = PheromoneGrid(400, 400, 4, evaporation=0.0, diffusion=0.0, max_value=255.0)
+    direction, strength = steering.strongest_trail_direction(
+        grid, PheromoneGrid.HOME, Vec2(200, 200), cfg.sensor_distance
+    )
+    assert direction is None
+    assert strength == 0.0
+
+
 def test_follow_pheromone_no_trail_keeps_heading():
     cfg = SimulationConfig()
     grid = PheromoneGrid(400, 400, 4, evaporation=0.0, diffusion=0.0, max_value=255.0)

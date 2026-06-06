@@ -45,6 +45,13 @@ class SimulationConfig:
     sensor_distance: float = 22.0    # jak daleko przed mrówką próbkujemy [px]
     pheromone_sense_threshold: float = 0.05  # poniżej tej wartości ignorujemy ślad
 
+    # Szansa, że mrówka wychodząca z gniazda od razu wejdzie na istniejący szlak
+    # FOOD (reszta rusza promieniście). Mechanizm jest samoregulujący: gdy szlaku
+    # nie ma (wczesna faza), mrówka i tak rusza promieniście i eksploruje.
+    # Pomiar (10 seedów, przepływ w stanie ustalonym): 0.0->83/min, 0.5->110/min,
+    # 1.0->143/min — wyższa wartość = wydajniejsza kolonia i wyraźniejsze szlaki.
+    trail_rejoin_chance: float = 1.0
+
     # --- Siatka feromonów ---
     cell_size: int = 4               # rozmiar komórki siatki [px]
     evaporation: float = 0.12        # frakcja odparowania na sekundę
