@@ -194,10 +194,12 @@ które przeniosłoby ruch na krótszą trasę.
 
 **Plan:**
 - **Role mrówek** (np. dataclass `AntProfile` lub typ Eksplorator/Robotnica),
-  przydzielane przy tworzeniu wg `explorer_ratio` z konfiguracji.
+  przydzielane przy tworzeniu wg `explorer_ratio` z konfiguracji (**domyślnie 10%**).
   - *Eksploratorzy* (mniejszość): wysoki `wander`, niska waga feromonu, ignorują
     `trail_rejoin` — aktywnie szukają skrótów i wariantów trasy.
   - *Robotnice* (większość): jak teraz — eksploatują szlak.
+- **Suwak „% eksploratorów" w panelu sterowania** (`ControlPanel`) — regulacja na
+  żywo (zakres 0–100%, start 10%); zmiana przelicza role w istniejącej kolonii.
 - **Optymalizacja przez sprzężenie zwrotne:** krótsza trasa = szybszy obieg =
   częstszy depozyt → samoistne wzmacnianie skrótu; przy odpowiednim parowaniu
   dłuższy wariant zanika. Dostroić `evaporation`/depozyt tak, by nieużywane
