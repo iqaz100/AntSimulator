@@ -14,11 +14,15 @@ pip install -r requirements.txt
 python main.py
 ```
 
+Okno jest skalowalne (można je maksymalizować jak zwykłe okno) — `F11` przełącza
+pełny ekran. Po zmianie rozmiaru świat dopasowuje się do nowych wymiarów.
+
 Sterowanie:
 
 | Klawisz / mysz | Działanie |
 |----------------|-----------|
 | `ESC`          | Wyjście |
+| `F11`          | Pełny ekran / powrót do okna |
 | `P`            | Pokaż / ukryj feromony |
 | `H`            | Pokaż / ukryj wskaźnik kierunku mrówek |
 | `TAB`          | Pokaż / ukryj panel sterowania |

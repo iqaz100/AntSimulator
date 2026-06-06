@@ -15,6 +15,7 @@ from antsim.core.world import World
 from antsim.entities.ant import Ant
 from antsim.entities.food import Food
 from antsim.entities.obstacle import Obstacle
+from antsim.pheromones.grid import PheromoneGrid
 from antsim.stats.collector import StatsCollector
 from config.settings import SimulationConfig
 
@@ -93,6 +94,34 @@ class Simulation:
         self.world.obstacles.append(
             Obstacle(position.x - size / 2.0, position.y - size / 2.0, size, size)
         )
+
+    def resize(self, width: int, height: int) -> None:
+        """Dopasowuje świat do nowych wymiarów okna (np. pełny ekran).
+
+        Buduje nową siatkę feromonów, przenosząc nakładający się fragment starej
+        (szlaki nie znikają przy zmianie rozmiaru), oraz przycina pozycje mrówek
+        i gniazda do nowych granic.
+        """
+        width = max(1, int(width))
+        height = max(1, int(height))
+        self.config.width = width
+        self.config.height = height
+
+        old = self.world.pheromones
+        new_grid = PheromoneGrid(
+            width, height, self.config.cell_size,
+            old.evaporation, old.diffusion, old.max_value,
+        )
+        rows = min(old.rows, new_grid.rows)
+        cols = min(old.cols, new_grid.cols)
+        new_grid.grid[:, :rows, :cols] = old.grid[:, :rows, :cols]
+        self.world.pheromones = new_grid
+
+        clamp = lambda v, hi: max(0.0, min(hi, v))
+        for ant in self.world.ants:
+            ant.position = Vec2(clamp(ant.position.x, width), clamp(ant.position.y, height))
+        nest = self.world.nest
+        nest.position = Vec2(clamp(nest.position.x, width), clamp(nest.position.y, height))
 
     def clear_obstacles(self) -> None:
         self.world.obstacles.clear()

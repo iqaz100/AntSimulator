@@ -92,5 +92,5 @@ class Renderer:
         )
         self.surface.blit(self.font.render(text, True, _TEXT_COLOR), (10, 10))
 
-        hint = "LPM: jedzenie  PPM: przeszkoda  SPACJA: +mrowki  R: usun przeszkody  C: czysc feromony  TAB: panel"
+        hint = "LPM: jedzenie  PPM: przeszkoda  SPACJA: +mrowki  R: przeszkody  C: feromony  TAB: panel  F11: pelny ekran"
         self.surface.blit(self.font.render(hint, True, _HINT_COLOR), (10, self.config.height - 26))
