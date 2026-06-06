@@ -1,38 +1,33 @@
 import pygame
 import random
 import math
-import numpy as np
-from typing import List, Tuple, Optional
-import colorsys
+from typing import List, Tuple
 
 # Inicjalizacja PyGame
 pygame.init()
 
 # ===== KONFIGURACJA PARAMETRÓW =====
-# Możesz włączać/wyłączać funkcje zmieniając te wartości na True/False
-
-# Podstawowe ustawienia
-ENABLE_OBSTACLES = True           # Włącz/wyłącz przeszkody
-ENABLE_ADVANCED_NAVIGATION = True # Włącz/wyłącz zaawansowaną nawigację
-ENABLE_PHEROMONE_GRADIENT = True  # Włącz/wyłącz gradient feromonów
-ENABLE_ANT_MEMORY = True          # Włącz/wyłącz pamięć mrówek
-ENABLE_DYNAMIC_SPEED = True       # Włącz/wyłącz dynamiczną prędkość
-ENABLE_ANT_SPECIALIZATION = True  # Włącz/wyłącz specjalizację mrówek
+ENABLE_OBSTACLES = True
+ENABLE_ADVANCED_NAVIGATION = True
+ENABLE_PHEROMONE_GRADIENT = True
+ENABLE_ANT_MEMORY = True
+ENABLE_DYNAMIC_SPEED = True
+ENABLE_ANT_SPECIALIZATION = True
 
 # Parametry przeszkód
-OBSTACLE_COUNT = 8               # Liczba przeszkód
-OBSTACLE_MIN_SIZE = 20           # Minimalny rozmiar przeszkody
-OBSTACLE_MAX_SIZE = 60           # Maksymalny rozmiar przeszkody
-OBSTACLE_COLOR = (100, 100, 100) # Kolor przeszkód
+OBSTACLE_COUNT = 0
+OBSTACLE_MIN_SIZE = 20
+OBSTACLE_MAX_SIZE = 60
+OBSTACLE_COLOR = (100, 100, 100)
 
-# Parametry zaawansowanej nawigacji
-NAVIGATION_RANGE = 80            # Zasięg wykrywania feromonów
-MEMORY_SIZE = 10                 # Rozmiar pamięci mrówki
-SPECIALIZATION_TYPES = ['scout', 'collector', 'guard']  # Typy specjalizacji
+# Parametry nawigacji
+NAVIGATION_RANGE = 80
+MEMORY_SIZE = 10
+SPECIALIZATION_TYPES = ['scout', 'collector', 'guard']
 
 # Parametry feromonów
-PHEROMONE_DECAY_RATE = 0.98      # Szybkość zanikania feromonów
-PHEROMONE_STRENGTH_MULTIPLIER = 1.5  # Mnożnik siły feromonów
+PHEROMONE_DECAY_RATE = 0.995
+PHEROMONE_STRENGTH_MULTIPLIER = 1.5
 
 # Stałe
 WINDOW_WIDTH = 1200
@@ -48,7 +43,6 @@ BLUE = (0, 0, 255)
 BROWN = (139, 69, 19)
 YELLOW = (255, 255, 0)
 ORANGE = (255, 165, 0)
-GRAY = (128, 128, 128)
 
 class Obstacle:
     """Klasa reprezentująca przeszkodę na planszy"""
@@ -64,7 +58,6 @@ class Obstacle:
         if radius == 0:
             return self.rect.collidepoint(x, y)
         else:
-            # Sprawdź czy okrąg koliduje z prostokątem
             closest_x = max(self.x, min(x, self.x + self.width))
             closest_y = max(self.y, min(y, self.y + self.height))
             distance = math.sqrt((x - closest_x)**2 + (y - closest_y)**2)
@@ -79,9 +72,8 @@ class AntMemory:
     """Klasa reprezentująca pamięć mrówki"""
     def __init__(self, size: int):
         self.size = size
-        self.positions = []  # Lista ostatnich pozycji
-        self.food_locations = []  # Lista znalezionych lokalizacji jedzenia
-        self.obstacle_locations = []  # Lista napotkanych przeszkód
+        self.positions = []
+        self.food_locations = []
         
     def add_position(self, x: float, y: float):
         """Dodaje pozycję do pamięci"""
@@ -96,59 +88,42 @@ class AntMemory:
             if len(self.food_locations) > self.size // 2:
                 self.food_locations.pop(0)
                 
-    def add_obstacle_location(self, x: float, y: float):
-        """Dodaje lokalizację przeszkody do pamięci"""
-        if (x, y) not in self.obstacle_locations:
-            self.obstacle_locations.append((x, y))
-            if len(self.obstacle_locations) > self.size // 2:
-                self.obstacle_locations.pop(0)
-                
     def get_recent_positions(self) -> List[Tuple[float, float]]:
         """Zwraca ostatnie pozycje"""
         return self.positions.copy()
-        
-    def is_recently_visited(self, x: float, y: float, threshold: float = 20) -> bool:
-        """Sprawdza czy pozycja była niedawno odwiedzona"""
-        for pos_x, pos_y in self.positions:
-            distance = math.sqrt((x - pos_x)**2 + (y - pos_y)**2)
-            if distance < threshold:
-                return True
-        return False
 
 class Pheromone:
     """Klasa reprezentująca feromon na planszy"""
     def __init__(self, x: int, y: int, strength: float, pheromone_type: str):
         self.x = x
         self.y = y
-        self.strength = strength  # Siła feromonu (0-1)
-        self.pheromone_type = pheromone_type  # 'food' lub 'home'
-        self.decay_rate = PHEROMONE_DECAY_RATE  # Szybkość zanikania feromonu
-        self.creation_time = pygame.time.get_ticks()  # Czas utworzenia
+        self.strength = strength
+        self.pheromone_type = pheromone_type
+        self.decay_rate = PHEROMONE_DECAY_RATE
+        self.creation_time = pygame.time.get_ticks()
+        self.decay_delay = 1200  # 20 sekund * 60 FPS
         
     def update(self):
-        """Aktualizuje siłę feromonu (zanikanie)"""
-        self.strength *= self.decay_rate
+        """Aktualizuje siłę feromonu (zanikanie po opóźnieniu)"""
+        current_time = pygame.time.get_ticks()
+        if current_time - self.creation_time > self.decay_delay:
+            self.strength *= self.decay_rate
         
     def get_color(self) -> Tuple[int, int, int]:
         """Zwraca kolor feromonu na podstawie typu i siły"""
-        # Upewnij się, że siła jest w zakresie 0-1
         strength = max(0, min(1, self.strength))
+        intensity = int(255 * strength)
         
         if self.pheromone_type == 'food':
-            # Zielony dla feromonów jedzenia
-            intensity = int(255 * strength)
-            return (0, intensity, 0)
+            return (0, intensity, 0)  # Zielony
         else:
-            # Niebieski dla feromonów powrotu
-            intensity = int(255 * strength)
-            return (0, 0, intensity)
+            return (0, 0, intensity)  # Niebieski
             
     def get_gradient_strength(self, distance: float) -> float:
         """Zwraca siłę feromonu z uwzględnieniem gradientu"""
         if not ENABLE_PHEROMONE_GRADIENT:
             return self.strength
             
-        # Gradient maleje z odległością
         max_distance = NAVIGATION_RANGE
         if distance > max_distance:
             return 0
@@ -159,7 +134,7 @@ class Food:
     def __init__(self, x: int, y: int, amount: int):
         self.x = x
         self.y = y
-        self.amount = amount  # Ilość jedzenia
+        self.amount = amount
         self.max_amount = amount
         
     def take_food(self, amount: int = 1) -> int:
@@ -180,7 +155,7 @@ class Food:
         """Zwraca kolor jedzenia na podstawie ilości"""
         ratio = self.amount / self.max_amount
         intensity = int(255 * ratio)
-        return (intensity, intensity, 0)  # Żółty z intensywnością
+        return (intensity, intensity, 0)
 
 class Nest:
     """Klasa reprezentująca gniazdo mrówek"""
@@ -199,7 +174,6 @@ class Nest:
         pygame.draw.circle(screen, BROWN, (self.x, self.y), self.radius)
         pygame.draw.circle(screen, BLACK, (self.x, self.y), self.radius, 2)
         
-        # Wyświetl ilość przechowywanego jedzenia
         font = pygame.font.Font(None, 24)
         text = font.render(f"Jedzenie: {self.food_stored}", True, WHITE)
         screen.blit(text, (self.x - 50, self.y - 40))
@@ -211,12 +185,12 @@ class Ant:
         self.y = y
         self.nest = nest
         self.radius = 3
-        self.base_speed = 2
+        self.base_speed = 1
         self.speed = self.base_speed
         self.angle = random.uniform(0, 2 * math.pi)
         self.has_food = False
         self.food_amount = 0
-        self.max_food_capacity = 3
+        self.max_food_capacity = 1
         
         # Parametry wędrówki
         self.wander_angle = 0
@@ -226,7 +200,6 @@ class Ant:
         
         # Parametry feromonów
         self.pheromone_drop_rate = 0.3
-        self.pheromone_sensitivity = 0.5
         
         # Pamięć mrówki
         self.memory = AntMemory(MEMORY_SIZE)
@@ -238,10 +211,28 @@ class Ant:
         else:
             self.specialization = 'general'
             
-        # Parametry zaawansowanej nawigacji
+        # Parametry nawigacji
         self.stuck_time = 0
         self.last_position = (x, y)
-        self.avoidance_angle = 0
+        
+        # Stan po znalezieniu jedzenia
+        self.waiting_after_food = False
+        self.wait_counter = 0
+        self.WAIT_FRAMES = FPS
+        
+        # Zapobieganie stagnacji
+        self.last_positions = []
+        self.STAGNATION_LIMIT = 40
+        self.STAGNATION_RADIUS = 5
+        
+        # Ochrona przed ponownym podniesieniem jedzenia
+        self.just_picked_food = False
+        self.just_picked_counter = 0
+        self.JUST_PICKED_FRAMES = 10
+        
+        # Ścieżka powrotu
+        self.return_path = []
+        self.return_path_index = None
         
     def _apply_specialization(self):
         """Stosuje specjalizację do mrówki"""
@@ -256,52 +247,153 @@ class Ant:
         elif self.specialization == 'guard':
             self.speed = self.base_speed * 1.2
             self.radius = 4
-            self.pheromone_sensitivity = 0.7
         
+    def _handle_edge_repulsion(self):
+        """Obsługuje odpychanie od krawędzi planszy"""
+        margin = 2
+        repel_strength = 0.2
+        
+        if self.x < margin:
+            self.angle += repel_strength * random.uniform(0.8, 1.2)
+        elif self.x > WINDOW_WIDTH - margin:
+            self.angle -= repel_strength * random.uniform(0.8, 1.2)
+        if self.y < margin:
+            self.angle += repel_strength * random.uniform(0.8, 1.2)
+        elif self.y > WINDOW_HEIGHT - margin:
+            self.angle -= repel_strength * random.uniform(0.8, 1.2)
+
+    def _check_stagnation(self):
+        """Sprawdza czy mrówka nie kręci się w kółko"""
+        self.last_positions.append((self.x, self.y))
+        if len(self.last_positions) > self.STAGNATION_LIMIT:
+            self.last_positions.pop(0)
+        if len(self.last_positions) == self.STAGNATION_LIMIT:
+            d = math.sqrt((self.x - self.last_positions[0][0])**2 + 
+                         (self.y - self.last_positions[0][1])**2)
+            if d < self.STAGNATION_RADIUS:
+                self.angle += random.uniform(math.pi/2, 3*math.pi/2)
+                self.last_positions = []
+
+    def _handle_food_pickup(self):
+        """Obsługuje podniesienie jedzenia"""
+        if self.wait_counter >= self.WAIT_FRAMES:
+            self.waiting_after_food = False
+            self.wait_counter = 0
+            self.has_food = True
+            
+            # Ustaw kąt w stronę gniazda
+            dx = self.nest.x - self.x
+            dy = self.nest.y - self.y
+            self.angle = math.atan2(dy, dx)
+            
+            # Odepchnij mrówkę od jedzenia
+            # dist = 8
+            # norm = math.sqrt(dx*dx + dy*dy)
+            # if norm > 0:
+            #     self.x += (dx / norm) * dist
+            #     self.y += (dy / norm) * dist
+            
+            # # Ustaw ochronę przed ponownym podniesieniem
+            # self.just_picked_food = True
+            # self.just_picked_counter = 0
+            
+            # Zapamiętaj ścieżkę powrotu
+            self.return_path = list(self.memory.get_recent_positions())[::-1]
+            self.return_path_index = 0
+            return True
+        return False
+
+    def _update_just_picked_counter(self):
+        """Aktualizuje licznik ochrony przed ponownym podniesieniem jedzenia"""
+        if self.just_picked_food:
+            self.just_picked_counter += 1
+            if self.just_picked_counter >= self.JUST_PICKED_FRAMES:
+                self.just_picked_food = False
+
+    def _return_via_path(self, obstacles: List[Obstacle]) -> bool:
+        """Wraca do gniazda po zapamiętanej ścieżce"""
+        if (self.return_path and self.return_path_index is not None and 
+            self.return_path_index < len(self.return_path)):
+            target = self.return_path[self.return_path_index]
+            dx = target[0] - self.x
+            dy = target[1] - self.y
+            dist = math.sqrt(dx*dx + dy*dy)
+            if dist < 3:
+                self.return_path_index += 1
+            else:
+                self.angle = math.atan2(dy, dx)
+            return True
+        return False
+
+    def _normalize_angle_diff(self, target_angle: float) -> float:
+        """Normalizuje różnicę kątów do zakresu [-π, π]"""
+        angle_diff = target_angle - self.angle
+        while angle_diff > math.pi:
+            angle_diff -= 2 * math.pi
+        while angle_diff < -math.pi:
+            angle_diff += 2 * math.pi
+        return angle_diff
+
     def update(self, pheromones: List[Pheromone], foods: List[Food], obstacles: List[Obstacle] = None):
         """Aktualizuje pozycję i stan mrówki"""
         if obstacles is None:
             obstacles = []
-            
-        # Sprawdź czy mrówka nie jest zablokowana
+
+        # Obsługa krawędzi i stagnacji
+        self._handle_edge_repulsion()
+        self._check_stagnation()
+
+        # Oczekiwanie po znalezieniu jedzenia
+        if self.waiting_after_food:
+            self.wait_counter += 1
+            if self._handle_food_pickup():
+                return
+
+        # Aktualizacja liczników
+        # self._update_just_picked_counter()
+
+        # Sprawdzenie zablokowania i prędkości
         self._check_if_stuck()
-        
-        # Dynamiczna prędkość
         if ENABLE_DYNAMIC_SPEED:
             self._update_speed()
-            
+
+        # Logika ruchu
         if self.has_food:
-            # Mrówka ma jedzenie - wraca do gniazda
-            self._return_to_nest(obstacles)
+            if not self._return_via_path(obstacles):
+                self._return_to_nest(obstacles)
         else:
-            # Mrówka szuka jedzenia
-            self._search_for_food(pheromones, foods, obstacles)
-            
-        # Sprawdź kolizje z przeszkodami
+            # Sprawdź czy mrówka wraca do źródła jedzenia po śladzie
+            if self.return_path and self.return_path_index is not None:
+                if not self._return_to_food_source(obstacles):
+                    # Jeśli dotarła do źródła, szukaj jedzenia
+                    self._search_for_food(pheromones, foods, obstacles)
+            else:
+                # Normalne szukanie jedzenia
+                self._search_for_food(pheromones, foods, obstacles)
+
+        # Obsługa przeszkód
         if ENABLE_OBSTACLES:
             self._handle_obstacle_collision(obstacles)
-            
-        # Aktualizuj pozycję
+
+        # Aktualizacja pozycji
         new_x = self.x + math.cos(self.angle) * self.speed
         new_y = self.y + math.sin(self.angle) * self.speed
         
-        # Sprawdź czy nowa pozycja nie koliduje z przeszkodami
         if not ENABLE_OBSTACLES or not self._position_collides_with_obstacles(new_x, new_y, obstacles):
             self.x = new_x
             self.y = new_y
         else:
-            # Jeśli koliduje, spróbuj znaleźć alternatywną ścieżkę
             self._find_alternative_path(obstacles)
-            
+
         # Ograniczenia planszy
         self.x = max(0, min(WINDOW_WIDTH, self.x))
         self.y = max(0, min(WINDOW_HEIGHT, self.y))
-        
-        # Dodaj pozycję do pamięci
+
+        # Aktualizacja pamięci
         self.memory.add_position(self.x, self.y)
-        
-        # Zapisz ostatnią pozycję
         self.last_position = (self.x, self.y)
+        
+        # Sprawdzenie dotarcia do gniazda - usunięte, bo jest obsługiwane w _return_to_nest
         
     def _check_if_stuck(self):
         """Sprawdza czy mrówka nie jest zablokowana"""
@@ -313,7 +405,7 @@ class Ant:
         
         if distance_moved < 1:
             self.stuck_time += 1
-            if self.stuck_time > 30:  # Zablokowana przez 30 klatek
+            if self.stuck_time > 30:
                 self.angle += random.uniform(-math.pi/2, math.pi/2)
                 self.stuck_time = 0
         else:
@@ -324,13 +416,12 @@ class Ant:
         if not ENABLE_DYNAMIC_SPEED:
             return
             
-        # Prędkość zależy od specjalizacji i stanu
         base_speed = self.base_speed
         
         if self.has_food:
-            base_speed *= 0.8  # Wolniej z jedzeniem
+            base_speed *= 0.8
         elif self.specialization == 'scout':
-            base_speed *= 1.2  # Szybciej gdy szuka
+            base_speed *= 1.2
             
         self.speed = base_speed
         
@@ -348,16 +439,10 @@ class Ant:
             
         for obstacle in obstacles:
             if obstacle.collides_with(self.x, self.y, self.radius):
-                # Dodaj lokalizację przeszkody do pamięci
-                self.memory.add_obstacle_location(self.x, self.y)
-                
-                # Oblicz kąt unikania
                 dx = self.x - (obstacle.x + obstacle.width/2)
                 dy = self.y - (obstacle.y + obstacle.height/2)
-                self.avoidance_angle = math.atan2(dy, dx)
-                
-                # Zmień kierunek ruchu
-                self.angle = self.avoidance_angle + random.uniform(-math.pi/4, math.pi/4)
+                avoidance_angle = math.atan2(dy, dx)
+                self.angle = avoidance_angle + random.uniform(-math.pi/4, math.pi/4)
                 break
                 
     def _find_alternative_path(self, obstacles: List[Obstacle]):
@@ -365,7 +450,6 @@ class Ant:
         if not ENABLE_ADVANCED_NAVIGATION:
             return
             
-        # Spróbuj różne kąty
         for i in range(8):
             test_angle = self.angle + (i * math.pi/4)
             test_x = self.x + math.cos(test_angle) * self.speed
@@ -375,40 +459,13 @@ class Ant:
                 self.angle = test_angle
                 return
                 
-        # Jeśli nie znajdzie ścieżki, zmień kierunek losowo
         self.angle = random.uniform(0, 2 * math.pi)
-        
-    def _find_path_to_target(self, target_x: float, target_y: float, obstacles: List[Obstacle]) -> float:
-        """Znajduje ścieżkę do celu omijając przeszkody"""
-        if not ENABLE_ADVANCED_NAVIGATION:
-            return math.atan2(target_y - self.y, target_x - self.x)
-            
-        # Sprawdź czy bezpośrednia ścieżka jest możliwa
-        direct_angle = math.atan2(target_y - self.y, target_x - self.x)
-        test_x = self.x + math.cos(direct_angle) * self.speed
-        test_y = self.y + math.sin(direct_angle) * self.speed
-        
-        if not self._position_collides_with_obstacles(test_x, test_y, obstacles):
-            return direct_angle
-            
-        # Znajdź alternatywną ścieżkę
-        for i in range(16):
-            test_angle = direct_angle + (i * math.pi/8)
-            test_x = self.x + math.cos(test_angle) * self.speed
-            test_y = self.y + math.sin(test_angle) * self.speed
-            
-            if not self._position_collides_with_obstacles(test_x, test_y, obstacles):
-                return test_angle
-                
-        # Jeśli nie znajdzie ścieżki, użyj losowego kąta
-        return random.uniform(0, 2 * math.pi)
         
     def _return_to_nest(self, obstacles: List[Obstacle] = None):
         """Logika powrotu do gniazda"""
         if obstacles is None:
             obstacles = []
             
-        # Oblicz kierunek do gniazda
         dx = self.nest.x - self.x
         dy = self.nest.y - self.y
         distance_to_nest = math.sqrt(dx*dx + dy*dy)
@@ -418,30 +475,22 @@ class Ant:
             self.nest.store_food(self.food_amount)
             self.food_amount = 0
             self.has_food = False
-            # Zmień kierunek na losowy
-            self.angle = random.uniform(0, 2 * math.pi)
+            
+            # Od razu wróć po śladzie feromonowym do źródła jedzenia
+            if self.return_path and len(self.return_path) > 0:
+                # Resetuj indeks ścieżki i idź z powrotem
+                self.return_path_index = len(self.return_path) - 1
+                # Ustaw kąt w kierunku pierwszego punktu ścieżki powrotu
+                target = self.return_path[self.return_path_index]
+                dx = target[0] - self.x
+                dy = target[1] - self.y
+                self.angle = math.atan2(dy, dx)
+            else:
+                # Jeśli nie ma ścieżki, wędruj losowo
+                self.angle = random.uniform(0, 2 * math.pi)
         else:
-            # Kieruj się do gniazda z małym odchyleniem
             target_angle = math.atan2(dy, dx)
-            
-            # Sprawdź czy ścieżka do gniazda nie jest zablokowana
-            if ENABLE_ADVANCED_NAVIGATION and obstacles:
-                test_x = self.x + math.cos(target_angle) * self.speed
-                test_y = self.y + math.sin(target_angle) * self.speed
-                
-                if self._position_collides_with_obstacles(test_x, test_y, obstacles):
-                    # Znajdź alternatywną ścieżkę do gniazda
-                    target_angle = self._find_path_to_target(self.nest.x, self.nest.y, obstacles)
-            
-            angle_diff = target_angle - self.angle
-            
-            # Normalizuj różnicę kątów
-            while angle_diff > math.pi:
-                angle_diff -= 2 * math.pi
-            while angle_diff < -math.pi:
-                angle_diff += 2 * math.pi
-                
-            # Płynnie skręć w kierunku gniazda
+            angle_diff = self._normalize_angle_diff(target_angle)
             self.angle += angle_diff * 0.1
             
     def _search_for_food(self, pheromones: List[Pheromone], foods: List[Food], obstacles: List[Obstacle] = None):
@@ -449,165 +498,145 @@ class Ant:
         if obstacles is None:
             obstacles = []
             
-        # Sprawdź pamięć mrówki dla znanych lokalizacji jedzenia
+        if self.just_picked_food:
+            return
+
+        # Sprawdź znane lokalizacje jedzenia
         if ENABLE_ANT_MEMORY and self.memory.food_locations:
             for food_x, food_y in self.memory.food_locations:
                 dx = food_x - self.x
                 dy = food_y - self.y
                 distance = math.sqrt(dx*dx + dy*dy)
-                
-                if distance < 50:  # Sprawdź znane lokalizacje
-                    target_angle = self._find_path_to_target(food_x, food_y, obstacles)
-                    angle_diff = target_angle - self.angle
-                    
-                    # Normalizuj różnicę kątów
-                    while angle_diff > math.pi:
-                        angle_diff -= 2 * math.pi
-                    while angle_diff < -math.pi:
-                        angle_diff += 2 * math.pi
-                        
+                if distance < 50:
+                    target_angle = math.atan2(dy, dx)
+                    angle_diff = self._normalize_angle_diff(target_angle)
                     self.angle += angle_diff * 0.3
                     return
-        
-        # Sprawdź czy jest jedzenie w pobliżu
+
+        # Sprawdź jedzenie w pobliżu
         for food in foods:
             if not food.is_empty():
                 dx = food.x - self.x
                 dy = food.y - self.y
                 distance = math.sqrt(dx*dx + dy*dy)
-                
                 if distance < 15:
-                    # Znaleziono jedzenie
                     taken = food.take_food(self.max_food_capacity)
                     if taken > 0:
                         self.food_amount = taken
-                        self.has_food = True
-                        # Dodaj lokalizację jedzenia do pamięci
+                        self.waiting_after_food = True
+                        self.wait_counter = 0
                         self.memory.add_food_location(food.x, food.y)
                         return
-        
-        # Sprawdź feromony jedzenia w pobliżu z uwzględnieniem gradientu
-        nearby_food_pheromones = []
+
+        # Sprawdź feromony jedzeniowe w pobliżu
+        nearby_pheromones = []
         for pheromone in pheromones:
             if pheromone.pheromone_type == 'food' and pheromone.strength > 0.1:
                 dx = pheromone.x - self.x
                 dy = pheromone.y - self.y
                 distance = math.sqrt(dx*dx + dy*dy)
-                
                 if distance < NAVIGATION_RANGE:
-                    # Użyj gradientu feromonów
                     strength = pheromone.get_gradient_strength(distance)
                     if strength > 0.05:
-                        nearby_food_pheromones.append((pheromone, distance, strength))
-        
-        if nearby_food_pheromones:
-            # Kieruj się w stronę najsilniejszego feromonu
-            strongest_pheromone = max(nearby_food_pheromones, 
-                                    key=lambda x: x[2] / (x[1] + 1))
-            pheromone, distance, strength = strongest_pheromone
+                        nearby_pheromones.append((pheromone, distance, strength))
+
+        # Jeśli są feromony w pobliżu, idź w kierunku przeciwnym do gniazda
+        if nearby_pheromones:
+            # Znajdź feromon w kierunku przeciwnym do gniazda
+            best_pheromone = None
+            best_score = -1
             
-            dx = pheromone.x - self.x
-            dy = pheromone.y - self.y
-            target_angle = math.atan2(dy, dx)
-            
-            # Dodaj losowość do ruchu
-            target_angle += random.uniform(-0.3, 0.3)
-            
-            # Sprawdź czy ścieżka do feromonu nie jest zablokowana
-            if ENABLE_ADVANCED_NAVIGATION:
-                test_x = self.x + math.cos(target_angle) * self.speed
-                test_y = self.y + math.sin(target_angle) * self.speed
+            for pheromone, distance, strength in nearby_pheromones:
+                # Oblicz kierunek do feromonu
+                dx_to_pheromone = pheromone.x - self.x
+                dy_to_pheromone = pheromone.y - self.y
                 
-                if self._position_collides_with_obstacles(test_x, test_y, obstacles):
-                    target_angle = self._find_path_to_target(pheromone.x, pheromone.y, obstacles)
-            
-            # Płynnie skręć w kierunku feromonu
-            angle_diff = target_angle - self.angle
-            while angle_diff > math.pi:
-                angle_diff -= 2 * math.pi
-            while angle_diff < -math.pi:
-                angle_diff += 2 * math.pi
+                # Oblicz kierunek do gniazda
+                dx_to_nest = self.nest.x - self.x
+                dy_to_nest = self.nest.y - self.y
                 
-            self.angle += angle_diff * 0.2
-        else:
-            # Wędruj losowo z uwzględnieniem przeszkód
-            self._wander(obstacles)
+                # Oblicz iloczyn skalarny (im bardziej przeciwny kierunek, tym lepszy)
+                dot_product = dx_to_pheromone * dx_to_nest + dy_to_pheromone * dy_to_nest
+                
+                # Normalizuj odległość
+                normalized_score = dot_product / (distance + 1)  # +1 żeby uniknąć dzielenia przez 0
+                
+                if normalized_score < best_score:  # Szukamy najmniejszego (najbardziej ujemnego)
+                    best_score = normalized_score
+                    best_pheromone = pheromone
+            
+            if best_pheromone:
+                # Idź w stronę wybranego feromonu
+                target_angle = math.atan2(best_pheromone.y - self.y, best_pheromone.x - self.x)
+                target_angle += random.uniform(-0.2, 0.2)
+                
+                angle_diff = self._normalize_angle_diff(target_angle)
+                self.angle += angle_diff * 0.2
+                return
+            
+        # Jeśli nie ma feromonów, wędruj losowo
+        self._wander(obstacles)
             
     def _wander(self, obstacles: List[Obstacle] = None):
-        """Losowe wędrowanie mrówki z uwzględnieniem przeszkód"""
+        """Losowe wędrowanie mrówki"""
         if obstacles is None:
             obstacles = []
             
-        # Aktualizuj kąt wędrówki
         self.wander_angle += random.uniform(-self.wander_change, self.wander_change)
         
-        # Oblicz pozycję celu wędrówki
+        if random.random() < 0.033:
+            self.wander_angle = random.uniform(0, 2 * math.pi)
+            
         wander_x = self.x + math.cos(self.wander_angle) * self.wander_distance
         wander_y = self.y + math.sin(self.wander_angle) * self.wander_distance
-        
-        # Dodaj losowy ruch wokół celu
         wander_x += random.uniform(-self.wander_radius, self.wander_radius)
         wander_y += random.uniform(-self.wander_radius, self.wander_radius)
         
-        # Sprawdź czy cel wędrówki nie jest w przeszkodzie
         if ENABLE_OBSTACLES:
             for obstacle in obstacles:
                 if obstacle.collides_with(wander_x, wander_y):
-                    # Wybierz nowy cel wędrówki
                     self.wander_angle = random.uniform(0, 2 * math.pi)
                     wander_x = self.x + math.cos(self.wander_angle) * self.wander_distance
                     wander_y = self.y + math.sin(self.wander_angle) * self.wander_distance
                     break
         
-        # Kieruj się do celu wędrówki
         dx = wander_x - self.x
         dy = wander_y - self.y
         target_angle = math.atan2(dy, dx)
         
-        # Sprawdź czy ścieżka do celu nie jest zablokowana
         if ENABLE_ADVANCED_NAVIGATION:
             test_x = self.x + math.cos(target_angle) * self.speed
             test_y = self.y + math.sin(target_angle) * self.speed
-            
             if self._position_collides_with_obstacles(test_x, test_y, obstacles):
-                target_angle = self._find_path_to_target(wander_x, wander_y, obstacles)
+                target_angle = random.uniform(0, 2 * math.pi)
         
-        # Płynnie skręć
-        angle_diff = target_angle - self.angle
-        while angle_diff > math.pi:
-            angle_diff -= 2 * math.pi
-        while angle_diff < -math.pi:
-            angle_diff += 2 * math.pi
-            
+        angle_diff = self._normalize_angle_diff(target_angle)
         self.angle += angle_diff * 0.1
         
     def drop_pheromone(self, pheromones: List[Pheromone]):
-        """Zostawia feromon na planszy"""
-        if random.random() < self.pheromone_drop_rate:
-            pheromone_type = 'food' if self.has_food else 'home'
-            strength = (1.0 if self.has_food else 0.5) * PHEROMONE_STRENGTH_MULTIPLIER
+        """Zostawia feromon na planszy tylko gdy niesie jedzenie"""
+        if self.has_food and random.random() < self.pheromone_drop_rate:
+            strength = 1.0 * PHEROMONE_STRENGTH_MULTIPLIER
             
-            # Specjalizacja wpływa na siłę feromonów
             if ENABLE_ANT_SPECIALIZATION:
                 if self.specialization == 'scout':
                     strength *= 1.5
                 elif self.specialization == 'collector':
                     strength *= 1.2
                     
-            pheromones.append(Pheromone(int(self.x), int(self.y), strength, pheromone_type))
+            pheromones.append(Pheromone(int(self.x), int(self.y), strength, 'food'))
             
     def draw(self, screen):
         """Rysuje mrówkę"""
-        # Kolor zależy od stanu i specjalizacji
         if self.has_food:
             color = ORANGE
         elif ENABLE_ANT_SPECIALIZATION:
             if self.specialization == 'scout':
-                color = (255, 0, 255)  # Magenta dla zwiadowców
+                color = (255, 0, 255)
             elif self.specialization == 'collector':
-                color = (0, 255, 255)  # Cyan dla zbieraczy
+                color = (0, 255, 255)
             elif self.specialization == 'guard':
-                color = (255, 255, 0)  # Żółty dla strażników
+                color = (255, 255, 0)
             else:
                 color = RED
         else:
@@ -615,16 +644,47 @@ class Ant:
             
         pygame.draw.circle(screen, color, (int(self.x), int(self.y)), self.radius)
         
-        # Rysuj kierunek ruchu
+        # Kierunek ruchu
         end_x = self.x + math.cos(self.angle) * 8
         end_y = self.y + math.sin(self.angle) * 8
         pygame.draw.line(screen, BLACK, (self.x, self.y), (end_x, end_y), 2)
         
-        # Rysuj specjalizację (mały kwadrat)
+        # Specjalizacja
         if ENABLE_ANT_SPECIALIZATION and self.specialization != 'general':
             spec_x = int(self.x) + 6
             spec_y = int(self.y) - 6
             pygame.draw.rect(screen, BLACK, (spec_x, spec_y, 3, 3))
+
+    def _return_to_food_source(self, obstacles: List[Obstacle] = None) -> bool:
+        """Wraca do źródła jedzenia po śladzie feromonowym"""
+        if obstacles is None:
+            obstacles = []
+            
+        if not self.return_path or self.return_path_index is None:
+            return False
+            
+        if self.return_path_index < 0:
+            # Dotarła do źródła jedzenia
+            self.return_path = []
+            self.return_path_index = None
+            return False
+            
+        # Idź do następnego punktu ścieżki
+        target = self.return_path[self.return_path_index]
+        dx = target[0] - self.x
+        dy = target[1] - self.y
+        distance = math.sqrt(dx*dx + dy*dy)
+        
+        if distance < 3:
+            # Przejdź do następnego punktu
+            self.return_path_index -= 1
+        else:
+            # Idź w kierunku punktu
+            target_angle = math.atan2(dy, dx)
+            angle_diff = self._normalize_angle_diff(target_angle)
+            self.angle += angle_diff * 0.15
+            
+        return True
 
 class AntSimulator:
     """Główna klasa symulatora"""
@@ -633,7 +693,6 @@ class AntSimulator:
         pygame.display.set_caption("Symulator Mrówek")
         self.clock = pygame.time.Clock()
         
-        # Inicjalizacja obiektów
         self.nest = Nest(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2)
         self.ants = []
         self.foods = []
@@ -642,44 +701,58 @@ class AntSimulator:
         
         # Stwórz przeszkody
         if ENABLE_OBSTACLES:
-            for _ in range(OBSTACLE_COUNT):
-                x = random.randint(100, WINDOW_WIDTH - 100)
-                y = random.randint(100, WINDOW_HEIGHT - 100)
-                w = random.randint(OBSTACLE_MIN_SIZE, OBSTACLE_MAX_SIZE)
-                h = random.randint(OBSTACLE_MIN_SIZE, OBSTACLE_MAX_SIZE)
-                self.obstacles.append(Obstacle(x, y, w, h))
+            self._create_obstacles()
             
         # Stwórz początkowe mrówki
+        self._create_initial_ants()
+        
+        # Stwórz jedzenie
+        self._spawn_food()
+
+    def _create_obstacles(self):
+        """Tworzy początkowe przeszkody"""
+        for _ in range(OBSTACLE_COUNT):
+            x = random.randint(100, WINDOW_WIDTH - 100)
+            y = random.randint(100, WINDOW_HEIGHT - 100)
+            w = random.randint(OBSTACLE_MIN_SIZE, OBSTACLE_MAX_SIZE)
+            h = random.randint(OBSTACLE_MIN_SIZE, OBSTACLE_MAX_SIZE)
+            self.obstacles.append(Obstacle(x, y, w, h))
+
+    def _create_initial_ants(self):
+        """Tworzy początkowe mrówki"""
         for _ in range(50):
             x = self.nest.x + random.uniform(-50, 50)
             y = self.nest.y + random.uniform(-50, 50)
             self.ants.append(Ant(int(x), int(y), self.nest))
-            
-        # Stwórz jedzenie
-        self._spawn_food()
         
     def _spawn_food(self):
         """Tworzy nowe jedzenie na planszy"""
-        for _ in range(5):
-            attempts = 0
-            while attempts < 50:  # Maksymalnie 50 prób
-                x = random.randint(100, WINDOW_WIDTH - 100)
-                y = random.randint(100, WINDOW_HEIGHT - 100)
-                
-                # Sprawdź czy pozycja nie koliduje z przeszkodami
-                valid_position = True
-                if ENABLE_OBSTACLES:
-                    for obstacle in self.obstacles:
-                        if obstacle.collides_with(x, y, 15):  # Promień 15 dla jedzenia
-                            valid_position = False
-                            break
-                            
-                if valid_position:
-                    amount = random.randint(20, 50)
-                    self.foods.append(Food(x, y, amount))
-                    break
-                    
+        # Stwórz jeden duży punkt jedzenia
+        attempts = 0
+        while attempts < 50:
+            x = random.randint(100, WINDOW_WIDTH - 100)
+            y = random.randint(100, WINDOW_HEIGHT - 100)
+            
+            # Jedzenie daleko od gniazda
+            nest_x, nest_y = self.nest.x, self.nest.y
+            min_dist = 300
+            if math.sqrt((x-nest_x)**2 + (y-nest_y)**2) < min_dist:
                 attempts += 1
+                continue
+                
+            valid_position = True
+            if ENABLE_OBSTACLES:
+                for obstacle in self.obstacles:
+                    if obstacle.collides_with(x, y, 15):
+                        valid_position = False
+                        break
+                        
+            if valid_position:
+                amount = random.randint(2000, 4000)  # 10x więcej jedzenia
+                self.foods.append(Food(x, y, amount))
+                break
+                
+            attempts += 1
             
     def update(self):
         """Aktualizuje stan symulatora"""
@@ -689,15 +762,10 @@ class AntSimulator:
             ant.drop_pheromone(self.pheromones)
             
         # Aktualizuj feromony
-        for pheromone in self.pheromones[:]:
+        self.pheromones = [p for p in self.pheromones if p.strength > 0.01]
+        for pheromone in self.pheromones:
             pheromone.update()
-            if pheromone.strength < 0.01:
-                self.pheromones.remove(pheromone)
                 
-        # Usuń puste jedzenie i stwórz nowe
-        self.foods = [food for food in self.foods if not food.is_empty()]
-        if len(self.foods) < 3:
-            self._spawn_food()
             
     def draw(self):
         """Rysuje wszystkie obiekty"""
@@ -712,17 +780,16 @@ class AntSimulator:
             try:
                 color = pheromone.get_color()
                 alpha = int(255 * pheromone.strength)
-                if alpha > 10:  # Rysuj tylko widoczne feromony
+                if alpha > 10:
                     pygame.draw.circle(self.screen, color, (pheromone.x, pheromone.y), 2)
-            except (ValueError, TypeError) as e:
-                # Jeśli wystąpi błąd z kolorem, pomiń ten feromon
+            except (ValueError, TypeError):
                 continue
                 
         # Rysuj jedzenie
         for food in self.foods:
             color = food.get_color()
-            pygame.draw.circle(self.screen, color, (food.x, food.y), 10)
-            pygame.draw.circle(self.screen, BLACK, (food.x, food.y), 10, 2)
+            pygame.draw.circle(self.screen, color, (food.x, food.y), 50)
+            pygame.draw.circle(self.screen, BLACK, (food.x, food.y), 50, 2)
             
         # Rysuj gniazdo
         self.nest.draw(self.screen)
@@ -732,6 +799,12 @@ class AntSimulator:
             ant.draw(self.screen)
             
         # Wyświetl statystyki
+        self._draw_stats()
+        
+        pygame.display.flip()
+
+    def _draw_stats(self):
+        """Rysuje statystyki na ekranie"""
         font = pygame.font.Font(None, 36)
         stats_text = f"Mrówki: {len(self.ants)} | Jedzenie: {len(self.foods)} | Feromony: {len(self.pheromones)}"
         if ENABLE_OBSTACLES:
@@ -739,7 +812,7 @@ class AntSimulator:
         text_surface = font.render(stats_text, True, BLACK)
         self.screen.blit(text_surface, (10, 10))
         
-        # Wyświetl informacje o funkcjach
+        # Informacje o funkcjach
         font_small = pygame.font.Font(None, 24)
         y_offset = 40
         if ENABLE_OBSTACLES:
@@ -758,46 +831,52 @@ class AntSimulator:
             text = font_small.render("Pamięć mrówek: WŁĄCZONA", True, GREEN)
             self.screen.blit(text, (10, y_offset))
         
-        pygame.display.flip()
+    def _handle_events(self):
+        """Obsługuje zdarzenia pygame"""
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return False
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    return False
+                elif event.key == pygame.K_SPACE:
+                    self._add_ants(10)
+                elif event.key == pygame.K_f:
+                    self._spawn_food()
+                elif event.key == pygame.K_o:
+                    self._add_obstacle()
+                elif event.key == pygame.K_r:
+                    self._reset_obstacles()
+        return True
+
+    def _add_ants(self, count: int):
+        """Dodaje nowe mrówki"""
+        for _ in range(count):
+            x = self.nest.x + random.uniform(-50, 50)
+            y = self.nest.y + random.uniform(-50, 50)
+            self.ants.append(Ant(int(x), int(y), self.nest))
+
+    def _add_obstacle(self):
+        """Dodaje nową przeszkodę"""
+        if ENABLE_OBSTACLES:
+            x = random.randint(100, WINDOW_WIDTH - 100)
+            y = random.randint(100, WINDOW_HEIGHT - 100)
+            w = random.randint(OBSTACLE_MIN_SIZE, OBSTACLE_MAX_SIZE)
+            h = random.randint(OBSTACLE_MIN_SIZE, OBSTACLE_MAX_SIZE)
+            self.obstacles.append(Obstacle(x, y, w, h))
+
+    def _reset_obstacles(self):
+        """Resetuje przeszkody"""
+        if ENABLE_OBSTACLES:
+            self.obstacles.clear()
+            self._create_obstacles()
         
     def run(self):
         """Główna pętla gry"""
         running = True
         while running:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    running = False
-                elif event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_ESCAPE:
-                        running = False
-                    elif event.key == pygame.K_SPACE:
-                        # Dodaj nowe mrówki
-                        for _ in range(10):
-                            x = self.nest.x + random.uniform(-50, 50)
-                            y = self.nest.y + random.uniform(-50, 50)
-                            self.ants.append(Ant(int(x), int(y), self.nest))
-                    elif event.key == pygame.K_f:
-                        # Dodaj nowe jedzenie
-                        self._spawn_food()
-                    elif event.key == pygame.K_o:
-                        # Dodaj nową przeszkodę
-                        if ENABLE_OBSTACLES:
-                            x = random.randint(100, WINDOW_WIDTH - 100)
-                            y = random.randint(100, WINDOW_HEIGHT - 100)
-                            w = random.randint(OBSTACLE_MIN_SIZE, OBSTACLE_MAX_SIZE)
-                            h = random.randint(OBSTACLE_MIN_SIZE, OBSTACLE_MAX_SIZE)
-                            self.obstacles.append(Obstacle(x, y, w, h))
-                    elif event.key == pygame.K_r:
-                        # Resetuj przeszkody
-                        if ENABLE_OBSTACLES:
-                            self.obstacles.clear()
-                            for _ in range(OBSTACLE_COUNT):
-                                x = random.randint(100, WINDOW_WIDTH - 100)
-                                y = random.randint(100, WINDOW_HEIGHT - 100)
-                                w = random.randint(OBSTACLE_MIN_SIZE, OBSTACLE_MAX_SIZE)
-                                h = random.randint(OBSTACLE_MIN_SIZE, OBSTACLE_MAX_SIZE)
-                                self.obstacles.append(Obstacle(x, y, w, h))
-                        
+            running = self._handle_events()
+            
             self.update()
             self.draw()
             self.clock.tick(FPS)
