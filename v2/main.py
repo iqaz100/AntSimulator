@@ -20,6 +20,7 @@ import pygame
 
 from antsim.core.simulation import Simulation
 from antsim.core.vector import Vec2
+from antsim.rendering.charts import ChartPanel
 from antsim.rendering.renderer import Renderer
 from antsim.rendering.ui import ControlPanel
 from config.settings import SimulationConfig
@@ -39,6 +40,7 @@ def run() -> None:
     simulation = Simulation(config)
     renderer = Renderer(screen, config)
     panel = ControlPanel(simulation, config)
+    charts = ChartPanel(simulation.stats, config)
 
     running = True
     while running:
@@ -47,6 +49,7 @@ def run() -> None:
         _handle_mouse_paint(simulation, panel)
         simulation.step(dt)
         renderer.draw(simulation.world, clock.get_fps())
+        charts.draw(screen)
         panel.draw(screen)
         pygame.display.flip()
 
@@ -68,6 +71,8 @@ def _handle_events(simulation: Simulation, config: SimulationConfig, panel: Cont
                 config.show_heading = not config.show_heading
             elif event.key == pygame.K_TAB:
                 panel.visible = not panel.visible
+            elif event.key == pygame.K_s:
+                config.show_charts = not config.show_charts
             elif event.key == pygame.K_SPACE:
                 simulation.add_ants(_ANTS_PER_KEYPRESS)
             elif event.key == pygame.K_r:

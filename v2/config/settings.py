@@ -70,7 +70,12 @@ class SimulationConfig:
     food_radius: float = 34.0
     food_min_distance_from_nest: float = 240.0
 
+    # --- Statystyki ---
+    stats_sample_interval: float = 1.0  # co ile sekund zapisać próbkę do historii
+    stats_history_size: int = 240       # ile próbek trzymać (okno wykresów)
+
     # --- Render ---
     show_pheromones: bool = True
     show_heading: bool = True
+    show_charts: bool = True
     background_color: tuple[int, int, int] = (18, 18, 22)

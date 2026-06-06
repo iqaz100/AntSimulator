@@ -147,6 +147,7 @@ class ControlPanel:
         slider("Trzymanie szlaku", lambda: cfg.trail_rejoin_chance, lambda v: setattr(cfg, "trail_rejoin_chance", v), 0.0, 1.0)
         toggle("Feromony (P)", lambda: cfg.show_pheromones, lambda b: setattr(cfg, "show_pheromones", b))
         toggle("Kierunek (H)", lambda: cfg.show_heading, lambda b: setattr(cfg, "show_heading", b))
+        toggle("Wykresy (S)", lambda: cfg.show_charts, lambda b: setattr(cfg, "show_charts", b))
 
         self._x = x
         self._bottom = y

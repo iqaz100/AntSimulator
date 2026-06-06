@@ -22,6 +22,7 @@ Sterowanie:
 | `P`            | Pokaż / ukryj feromony |
 | `H`            | Pokaż / ukryj wskaźnik kierunku mrówek |
 | `TAB`          | Pokaż / ukryj panel sterowania |
+| `S`            | Pokaż / ukryj wykresy |
 | `SPACJA`       | Dodaj mrówki |
 | `R`            | Usuń wszystkie przeszkody |
 | `C`            | Wyczyść feromony |
@@ -31,6 +32,9 @@ Sterowanie:
 Panel sterowania (prawy górny róg, `TAB` chowa) pozwala zmieniać na żywo: liczbę
 mrówek, prędkość, parowanie i dyfuzję feromonów, siłę i wagę feromonu oraz
 „trzymanie szlaku", a także przełączać warstwy feromonów i wskaźnik kierunku.
+
+Wykresy w czasie (lewy dolny róg, `S` chowa) pokazują: tempo dostarczeń na minutę,
+liczebność kolonii, łączną ilość zebranego jedzenia oraz wydajność na mrówkę.
 
 ## Jak działają mrówki
 
@@ -73,6 +77,7 @@ antsim/
   rendering/
     renderer.py          warstwa widoku (pygame)
     ui.py                panel sterowania na żywo (suwaki, przełączniki)
+    charts.py            wykresy szeregów czasowych
   stats/collector.py     StatsCollector (Observer)
 tests/                   testy logiki (vector, grid, steering, states)
 experiments/benchmark.py powtarzalny pomiar wydajności (headless)
@@ -148,6 +153,6 @@ stąd domyślna wartość `1.0`.
 - [x] Etap 3 — siatka feromonów (ACO: dwa ślady, parowanie, dyfuzja, czujniki)
 - [x] Etap 4 — przeszkody i interaktywna mapa (mysz)
 - [x] Etap 5 — panel sterowania na żywo (suwaki, przełączniki)
-- [ ] Etap 6 — statystyki i wykresy w czasie
+- [x] Etap 6 — statystyki i wykresy w czasie
 - [ ] Etap 7 — życie kolonii (głód, narodziny, drapieżniki)
 - [ ] Etap 8 — wydajność, dopracowanie, dokumentacja

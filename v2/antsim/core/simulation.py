@@ -25,7 +25,11 @@ class Simulation:
             random.seed(seed)
         self.config = config
         self.world = World(config)
-        self.stats = StatsCollector(self.world.events)
+        self.stats = StatsCollector(
+            self.world.events,
+            sample_interval=config.stats_sample_interval,
+            history_size=config.stats_history_size,
+        )
         self._populate()
 
     # --- Budowa stanu początkowego (fabryka) ---
@@ -102,4 +106,4 @@ class Simulation:
         for ant in self.world.ants:
             ant.update(self.world, dt)
         self.world.pheromones.update(dt)
-        self.stats.tick(dt)
+        self.stats.tick(dt, self.world)
