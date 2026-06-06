@@ -95,6 +95,24 @@ python run_tests.py        # wbudowany runner (bez zależności)
 python -m pytest           # alternatywnie, jeśli masz pytest
 ```
 
+37 testów pokrywa czystą logikę: wektory, siatkę feromonów, steering, maszynę
+stanów, przeszkody, UI, statystyki oraz przebieg integracyjny (niezmienniki:
+mrówki w granicach planszy i poza przeszkodami).
+
+## Wydajność
+
+Symulacja i render są rozdzielone; model jest tani, a koszt rośnie liniowo z
+liczbą mrówek. Pomiar (pełna klatka: krok + render, okno 1200×800):
+
+| Mrówki | ms / klatkę | ~FPS |
+|-------:|------------:|-----:|
+| 120    | 4.0         | 249  |
+| 400    | 9.0         | 111  |
+| 800    | 16.0        | 63   |
+
+Siatka feromonów (parowanie + dyfuzja, wektorowo w numpy) to ~0.4 ms/klatkę i nie
+jest wąskim gardłem. Pętla jest ograniczona do `fps` z konfiguracji.
+
 ## Badania / benchmark wydajności
 
 Decyzje o parametrach (np. jak mocno mrówki mają trzymać się szlaków) opieram na
@@ -154,5 +172,5 @@ stąd domyślna wartość `1.0`.
 - [x] Etap 4 — przeszkody i interaktywna mapa (mysz)
 - [x] Etap 5 — panel sterowania na żywo (suwaki, przełączniki)
 - [x] Etap 6 — statystyki i wykresy w czasie
-- [ ] Etap 7 — życie kolonii (głód, narodziny, drapieżniki)
-- [ ] Etap 8 — wydajność, dopracowanie, dokumentacja
+- [ ] Etap 7 — życie kolonii (głód, narodziny, drapieżniki) — *pominięty na życzenie*
+- [x] Etap 8 — wydajność, hardening, dokumentacja

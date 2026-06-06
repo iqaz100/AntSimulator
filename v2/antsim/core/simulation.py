@@ -106,4 +106,10 @@ class Simulation:
         for ant in self.world.ants:
             ant.update(self.world, dt)
         self.world.pheromones.update(dt)
+        self._prune_depleted_food()
         self.stats.tick(dt, self.world)
+
+    def _prune_depleted_food(self) -> None:
+        """Usuwa wyczerpane źródła jedzenia (np. po wielu kliknięciach myszą)."""
+        if any(food.is_empty() for food in self.world.foods):
+            self.world.foods = [food for food in self.world.foods if not food.is_empty()]

@@ -79,3 +79,11 @@ class SimulationConfig:
     show_heading: bool = True
     show_charts: bool = True
     background_color: tuple[int, int, int] = (18, 18, 22)
+
+    def __post_init__(self) -> None:
+        if min(self.width, self.height, self.fps, self.cell_size) <= 0:
+            raise ValueError("width, height, fps i cell_size muszą być dodatnie")
+        if self.ant_count < 0:
+            raise ValueError("ant_count nie może być ujemne")
+        if not 0.0 <= self.trail_rejoin_chance <= 1.0:
+            raise ValueError("trail_rejoin_chance musi być w zakresie [0, 1]")
