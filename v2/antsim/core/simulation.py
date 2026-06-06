@@ -61,6 +61,15 @@ class Simulation:
     def add_ants(self, count: int) -> None:
         self._spawn_ants(count)
 
+    def set_population(self, target: int) -> None:
+        """Ustawia liczebność kolonii — dodaje nowe lub usuwa nadmiarowe mrówki."""
+        target = max(0, target)
+        current = len(self.world.ants)
+        if target > current:
+            self._spawn_ants(target - current)
+        elif target < current:
+            del self.world.ants[target:]
+
     def add_food_at(self, position: Vec2) -> None:
         cfg = self.config
         self.world.foods.append(Food(position, cfg.food_amount, cfg.food_radius))

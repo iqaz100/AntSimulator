@@ -21,6 +21,7 @@ import pygame
 from antsim.core.simulation import Simulation
 from antsim.core.vector import Vec2
 from antsim.rendering.renderer import Renderer
+from antsim.rendering.ui import ControlPanel
 from config.settings import SimulationConfig
 
 _MAX_DT = 0.05  # zabezpieczenie przed skokiem czasu po zacięciu (s)
@@ -37,23 +38,27 @@ def run() -> None:
 
     simulation = Simulation(config)
     renderer = Renderer(screen, config)
+    panel = ControlPanel(simulation, config)
 
     running = True
     while running:
         dt = min(clock.tick(config.fps) / 1000.0, _MAX_DT)
-        running = _handle_events(simulation, config)
-        _handle_mouse_paint(simulation)
+        running = _handle_events(simulation, config, panel)
+        _handle_mouse_paint(simulation, panel)
         simulation.step(dt)
         renderer.draw(simulation.world, clock.get_fps())
+        panel.draw(screen)
         pygame.display.flip()
 
     pygame.quit()
 
 
-def _handle_events(simulation: Simulation, config: SimulationConfig) -> bool:
+def _handle_events(simulation: Simulation, config: SimulationConfig, panel: ControlPanel) -> bool:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             return False
+        if panel.handle_event(event):   # panel ma pierwszeństwo nad światem
+            continue
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
                 return False
@@ -61,6 +66,8 @@ def _handle_events(simulation: Simulation, config: SimulationConfig) -> bool:
                 config.show_pheromones = not config.show_pheromones
             elif event.key == pygame.K_h:
                 config.show_heading = not config.show_heading
+            elif event.key == pygame.K_TAB:
+                panel.visible = not panel.visible
             elif event.key == pygame.K_SPACE:
                 simulation.add_ants(_ANTS_PER_KEYPRESS)
             elif event.key == pygame.K_r:
@@ -76,10 +83,9 @@ def _handle_events(simulation: Simulation, config: SimulationConfig) -> bool:
     return True
 
 
-def _handle_mouse_paint(simulation: Simulation) -> None:
+def _handle_mouse_paint(simulation: Simulation, panel: ControlPanel) -> None:
     """Trzymanie PPM maluje ciąg przeszkód (wygodne rysowanie ścian)."""
-    buttons = pygame.mouse.get_pressed()
-    if buttons[2]:
+    if pygame.mouse.get_pressed()[2] and not panel.wants_mouse(pygame.mouse.get_pos()):
         simulation.add_obstacle_at(Vec2(*pygame.mouse.get_pos()))
 
 
