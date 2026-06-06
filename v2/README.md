@@ -63,6 +63,7 @@ antsim/
   rendering/renderer.py  warstwa widoku (pygame)
   stats/collector.py     StatsCollector (Observer)
 tests/                   testy logiki (vector, grid, steering, states)
+experiments/benchmark.py powtarzalny pomiar wydajności (headless)
 ```
 
 Zastosowane wzorce: **State** (zachowanie mrówki), **Strategy** (steering),
@@ -76,6 +77,57 @@ cd v2
 python run_tests.py        # wbudowany runner (bez zależności)
 python -m pytest           # alternatywnie, jeśli masz pytest
 ```
+
+## Badania / benchmark wydajności
+
+Decyzje o parametrach (np. jak mocno mrówki mają trzymać się szlaków) opieram na
+**pomiarach**, a nie na pojedynczej obserwacji „na oko". Służy do tego powtarzalny
+skrypt `experiments/benchmark.py`. Działa *headless* — bez okna i bez pygame
+(operuje na czystym modelu), więc liczy się szybko.
+
+### Co i jak mierzy
+
+Symulacja jest uruchamiana wielokrotnie, dla wielu ziaren losowych, i raportuje:
+
+- **przepływ w stanie ustalonym** — ile jedzenia dostarczono na minutę w oknie
+  `[warmup, duration]`, czyli *po* uformowaniu się szlaków feromonowych. To
+  metryka odporna na szum. Sama „suma po N sekundach" jest myląca, bo zależy
+  głównie od tego, jak szybko **pierwsza** mrówka przypadkiem trafi na jedzenie —
+  ten losowy start potrafi zdominować krótki przebieg i maskować rzeczywisty efekt
+  badanego parametru;
+- **całość @duration** — łączne dostarczenia do końca przebiegu (zaszumione,
+  podane dla porównania).
+
+> Uwaga metodologiczna: pierwszy, pochopny pomiar (5 ziaren, „suma po 240 s")
+> sugerował, że trzymanie się szlaków obniża wydajność. Dopiero rzetelna metryka
+> (10 ziaren, stan ustalony) pokazała coś odwrotnego — dlatego ten skrypt domyślnie
+> używa wielu ziaren i okna stanu ustalonego.
+
+### Uruchomienie
+
+```bash
+cd v2
+python -m experiments.benchmark                                   # domyślnie: trail_rejoin_chance = 0, 0.5, 1
+python -m experiments.benchmark --param evaporation --values 0.05 0.12 0.25 --seeds 20
+python -m experiments.benchmark --param ant_count --values 60 120 240 --duration 300
+```
+
+Parametry: `--param` (dowolne pole `SimulationConfig`), `--values` (lista wartości
+do porównania), `--seeds`, `--duration`, `--warmup`.
+
+### Przykładowy wynik (10 ziaren)
+
+```
+trail_rejoin_chance | przeplyw [dostarcz./min] | calosc @240s
+------------------------------------------------------------
+               0.0  |                   82.6  |          218.3
+               0.5  |                  109.5  |          264.1
+               1.0  |                  143.2  |          351.1
+```
+
+Wniosek: im chętniej mrówki wychodzą z gniazda istniejącym szlakiem
+(`trail_rejoin_chance` → 1.0), tym wydajniejsza kolonia i wyraźniejsze szlaki —
+stąd domyślna wartość `1.0`.
 
 ## Status / plan rozwoju
 
