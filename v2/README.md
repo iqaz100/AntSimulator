@@ -178,3 +178,57 @@ stąd domyślna wartość `1.0`.
 - [x] Etap 6 — statystyki i wykresy w czasie
 - [ ] Etap 7 — życie kolonii (głód, narodziny, drapieżniki) — *pominięty na życzenie*
 - [x] Etap 8 — wydajność, hardening, dokumentacja
+- [ ] Etap 9 — eksploratorzy vs. szlak: optymalizacja (skracanie) tras
+- [ ] Etap 10 — debug: powrót inną trasą niż dojście (weryfikacja błędu)
+
+### Etap 9 — eksploratorzy vs. mrówki podążające szlakiem (optymalizacja tras)
+
+**Problem (zaobserwowany):** gdy szlak gniazdo↔jedzenie już powstanie, „zastyga" —
+mrówki w kółko chodzą tą samą (często krętą, nieoptymalną) trasą i nie skraca się
+ona z czasem. W prawdziwej kolonii szlaki dążą do najkrótszej ścieżki.
+
+**Dlaczego tak jest teraz:** wszystkie mrówki mają jednakowe parametry i mocno
+trzymają się feromonu (`trail_rejoin_chance = 1.0`, jednolita `pheromone_weight`).
+Po uformowaniu szlaku nikt nie szuka skrótów, więc brak dodatniego sprzężenia,
+które przeniosłoby ruch na krótszą trasę.
+
+**Plan:**
+- **Role mrówek** (np. dataclass `AntProfile` lub typ Eksplorator/Robotnica),
+  przydzielane przy tworzeniu wg `explorer_ratio` z konfiguracji.
+  - *Eksploratorzy* (mniejszość): wysoki `wander`, niska waga feromonu, ignorują
+    `trail_rejoin` — aktywnie szukają skrótów i wariantów trasy.
+  - *Robotnice* (większość): jak teraz — eksploatują szlak.
+- **Optymalizacja przez sprzężenie zwrotne:** krótsza trasa = szybszy obieg =
+  częstszy depozyt → samoistne wzmacnianie skrótu; przy odpowiednim parowaniu
+  dłuższy wariant zanika. Dostroić `evaporation`/depozyt tak, by nieużywane
+  odcinki gasły i szlak mógł się „przepiąć".
+- **Render:** odróżnić eksploratorów kolorem (opcjonalny przełącznik).
+- **Pomiar:** dodać metrykę zbieżności do benchmarku — np. średni czas obiegu
+  (round-trip) lub długość szlaku w czasie, by potwierdzić skracanie trasy.
+- **Testy:** przydział ról wg proporcji; eksplorator błądzi bardziej (mniejszy
+  wpływ feromonu na kierunek) niż robotnica.
+
+### Etap 10 — debug: powrót inną trasą niż dojście (weryfikacja)
+
+**Problem (zaobserwowany):** mrówka idąca do jedzenia po szlaku feromonowym czasem
+**nie wraca tym samym szlakiem** — odbija na całkiem przeciwną stronę.
+
+**Hipotezy do sprawdzenia (najpierw weryfikacja, czy to błąd):**
+1. *Oczekiwana cecha ACO?* — dojście śledzi warstwę FOOD, powrót warstwę HOME; to
+   dwa osobne ślady o różnej geometrii, więc trasa powrotna **może** się różnić.
+   Trzeba ocenić, czy „druga strona" to naturalny wariant, czy patologia.
+2. `ReturningState.on_enter` ustawia kurs **wprost na gniazdo**; jeśli szlak HOME
+   przy jedzeniu jest słaby/rozwidlony, czujniki mogą złapać inną gałąź i poprowadzić
+   mrówkę naokoło.
+3. Limit skrętu (`ant_max_turn`) przy ~180° zawróceniu na jedzeniu może powodować
+   „okrążanie" zamiast zawrotu.
+4. Artefakt gradientu HOME w pobliżu jedzenia (pętla/stary depozyt) wskazujący zły
+   kierunek.
+
+**Plan diagnozy:**
+- Tryb debug: śledzenie i rysowanie trasy **jednej** mrówki (dojście vs. powrót).
+- Scenariusz kontrolny: jedno źródło jedzenia, brak przeszkód — sprawdzić, czy
+  rozjazd jest systematyczny i jak częsty.
+- Werdykt: jeśli błąd — rozważyć fix (np. start powrotu z uwzględnieniem kierunku,
+  którym mrówka przyszła; spójniejszy gradient HOME), jeśli cecha — opisać i ew.
+  zredukować parametrami.
